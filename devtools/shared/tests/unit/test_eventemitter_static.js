@@ -6,7 +6,7 @@
 const {
   ConsoleAPIListener
 } = require("devtools/server/actors/utils/webconsole-listeners");
-const { on, once, off, emit, count } = require("devtools/shared/event-emitter");
+const { on, once, off, emit, count, handler } = require("devtools/shared/event-emitter");
 
 const pass = (message) => ok(true, message);
 const fail = (message) => ok(false, message);
@@ -196,7 +196,7 @@ const TESTS = {
   },
 
   "test count"() {
-    let target = {};
+    let target = { name: "target" };
 
     equal(count(target, "foo"), 0, "no listeners for 'foo' events");
     on(target, "foo", () => {});
@@ -208,12 +208,13 @@ const TESTS = {
   },
 
   async "test once"() {
-    let target = {};
+    let target = { name: "target" };
     let called = false;
 
-    let pFoo = once(target, "foo", value => {
+    let pFoo = once(target, "foo", function(value) {
       ok(!called, "listener called only once");
       equal(value, "bar", "correct argument was passed");
+      equal(this, target, "the contextual object is correct");
     });
     let pDone = once(target, "done");
 
@@ -225,7 +226,7 @@ const TESTS = {
   },
 
   "test removing once"(done) {
-    let target = {};
+    let target = { name: "target" };
 
     once(target, "foo", fail);
     once(target, "done", done);
@@ -234,7 +235,127 @@ const TESTS = {
 
     emit(target, "foo", "listener was called");
     emit(target, "done", "");
-  }
+  },
+
+  "test once with predicate"(done) {
+    let actual = [];
+    let target = { name: "target" };
+
+    once(target, "foo", {when: value => {
+      actual.push(value);
+      return value === 100;
+    }}).then((value) => {
+      equal(value, 100), "`once` promise resolved when the predicate is true";
+      deepEqual(actual, [2, 10, 100], "predicate called for each emit in the right order");
+      equal(count(target, "foo"), 0, "listener removed");
+      done();
+    });
+    equal(count(target, "foo"), 1, "predicate added as listener");
+
+    emit(target, "foo", 2);
+    emit(target, "foo", 10);
+    equal(count(target, "foo"), 1, "`listener still present");
+    emit(target, "foo", 100);
+  },
+
+  "test removing once with predicate"() {
+    let target = { name: "target" };
+
+    let listener = () => {};
+    let predicate = {when: listener};
+
+    once(target, "foo", predicate);
+    equal(count(target, "foo"), 1, "predicate added as listener");
+
+    off(target, "foo", predicate);
+    equal(count(target, "foo"), 0, "predicate removed as listener");
+
+    once(target, "foo", predicate);
+    off(target, "foo", () => {});
+    equal(count(target, "foo"), 1, "predicate still present");
+
+    off(target, "foo", listener);
+    equal(count(target, "foo"), 0, "remove predicate's listener remove the predicate");
+  },
+
+  "test add a listener's object with handler method"() {
+    let target = { name: "target" };
+    let actual = [];
+    let listener = function(...args) {
+      equal(this, target, "the contextual object is correct for function listener");
+      deepEqual(args, [10, 20, 30], "arguments are properly passed");
+    }
+
+    let object = {
+      name: "target",
+      [handler](type, ...rest) {
+        actual.push(type);
+        equal(this, object, "the contextual object is correct for object listener");
+        deepEqual(rest, [10, 20, 30], "arguments are properly passed");
+      }
+    }
+
+    on(target, "foo", listener);
+    on(target, "bar", object);
+    on(target, "baz", object);
+
+    emit(target, "foo", 10, 20, 30);
+    emit(target, "bar", 10, 20, 30);
+    emit(target, "baz", 10, 20, 30);
+
+    deepEqual(actual, ["bar", "baz"], "object's listener called in the expected order");
+  },
+
+  "test remove a listener's object with handler method"() {
+    let target = {};
+    let actual = [];
+
+    let object = {
+      [handler](type) {
+        actual.push(1);
+        on(target, "message", () => {
+          off(target, "message", object);
+          actual.push(2);
+        });
+      }
+    };
+
+    on(target, "message", object);
+
+    emit(target, "message");
+    deepEqual([ 1 ], actual, "first listener called");
+
+    emit(target, "message");
+    deepEqual([ 1, 1, 2 ], actual, "second listener called");
+
+    emit(target, "message");
+    deepEqual([ 1, 1, 2, 2, 2 ], actual, "first listener removed");
+  },
+
+  async "test once with a listener's object with handler method"(){
+    let target = { name: "target" };
+    let called = false;
+
+    let object = {
+      [handler](type, value) {
+        ok(!called, "listener called only once");
+        equal(type, "foo", "event type is properly passed");
+        equal(value, "bar", "correct argument was passed");
+        equal(this, object, "the contextual object is correct for object listener");
+      }
+    }
+
+    let pFoo = once(target, "foo", object);
+
+    let pDone = once(target, "done");
+
+    emit(target, "foo", "bar");
+    emit(target, "foo", "baz");
+    emit(target, "done", "");
+
+    await Promise.all([pFoo, pDone]);
+  },
+
 };
 
 const run = (tests) => (async function () {

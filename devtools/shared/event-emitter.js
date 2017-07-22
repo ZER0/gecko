@@ -63,6 +63,7 @@
 
   const eventListeners = Symbol("EventEmitter/listeners");
   const originalListener = Symbol("EventEmitter/original-listener");
+  const handler = Symbol("EventEmitter/event-handler");
 
   class EventEmitter {
     constructor() {
@@ -81,7 +82,7 @@
      *    The listener function that processes the event.
      */
     static on(target, type, listener) {
-      if (typeof listener !== "function") {
+      if (typeof listener !== "function" && !isEventHandler(listener)) {
         throw new Error(BAD_LISTENER);
       }
 
@@ -126,7 +127,10 @@
             listenersForType.delete(listener);
           } else {
             for (let value of listenersForType.values()) {
-              if (originalListener in value && value[originalListener] === listener) {
+              if (originalListener in value && (
+                value[originalListener] === listener ||
+                value[originalListener].when === listener
+               )) {
                 listenersForType.delete(value);
                 return;
               }
@@ -149,25 +153,42 @@
     /**
      * Registers an event `listener` that is called only the next time an event
      * of the specified `type` is emitted on the given event `target`.
+     * It returns a promised resolved once the specified event `type` is emitted.
+     *
      * @param {Object} target
      *    Event target object.
      * @param {String} type
      *    The type of the event.
-     * @param {Function} listener
+     * @param {Function|Object} [listener]
      *    The listener function that processes the event.
+     *    It can also be an object with a `when` method that acts as predicate.
+     *    In such case the listener will be removed, and the promise resolved, only when
+     *    the predicate returns `true`.
+     * @return {Promise}
+     *    The promise resolved once the event `type` is emitted.
      */
     static once(target, type, listener) {
       return new Promise(resolve => {
-        let handler = (first, ...rest) => {
-          EventEmitter.off(target, type, handler);
+        let newListener = (first, ...rest) => {
+          let resolved = true;
+
           if (listener) {
-            listener(first, ...rest);
+            if (isPredicate(listener)) {
+              resolved = listener.when.call(target, first, ...rest);
+            } else if (isEventHandler(listener)) {
+              listener[handler].call(listener, type, first, ...rest);
+            } else {
+              listener.call(target, first, ...rest);
+            }
           }
-          resolve(first);
+          if (resolved) {
+            EventEmitter.off(target, type, newListener);
+            resolve(first);
+          }
         };
 
-        handler[originalListener] = listener;
-        EventEmitter.on(target, type, handler);
+        newListener[originalListener] = listener;
+        EventEmitter.on(target, type, newListener);
       });
     }
 
@@ -194,7 +215,11 @@
         if (target[eventListeners].get(type) &&
           target[eventListeners].get(type).has(listener)) {
           try {
-            listener.call(target, ...rest);
+            if (isEventHandler(listener)) {
+              listener[handler].call(listener, type, ...rest);
+            } else {
+              listener.call(target, ...rest);
+            }
           } catch (ex) {
             // Prevent a bad listener from interfering with the others.
             let msg = ex + ": " + ex.stack;
@@ -243,6 +268,10 @@
       return Object.defineProperties(target, descriptors);
     }
 
+    static get handler() {
+      return handler;
+    }
+
     on(...args) {
       EventEmitter.on(this, ...args);
     }
@@ -261,6 +290,12 @@
   }
 
   module.exports = this.EventEmitter = EventEmitter;
+
+  const isPredicate = (listener) =>
+    listener && typeof listener === "object" && typeof listener.when === "function";
+
+  const isEventHandler = (listener) =>
+    listener && handler in listener && typeof listener[handler] === "function";
 
   // See comment in JSM module boilerplate when adding a new dependency.
   const Services = require("Services");
