@@ -77,7 +77,7 @@ exports.ReflowActor = protocol.ActorClassWithSpec(reflowSpec, {
     }
   },
 
-  _onReflow: function (event, reflows) {
+  _onReflow: function (reflows) {
     if (this._isStarted) {
       events.emit(this, "reflows", reflows);
     }

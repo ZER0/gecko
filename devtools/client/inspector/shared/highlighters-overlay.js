@@ -461,7 +461,7 @@ HighlightersOverlay.prototype = {
    * Handler function for "markupmutation" events. Hides the grid highlighter if the grid
    * container is no longer in the DOM tree.
    */
-  onMarkupMutation: Task.async(function* (evt, mutations) {
+  onMarkupMutation: Task.async(function* (mutations) {
     let hasInterestingMutation = mutations.some(mut => mut.type === "childList");
     if (!hasInterestingMutation || !this.gridHighlighterShown) {
       // Bail out if the mutations did not remove nodes, or if no grid highlighter is

@@ -68,6 +68,7 @@ function openBoxModelView() {
 
 /**
  * Wait for the boxmodel-view-updated event.
+ * It waits for another update event if we are waiting for a selection related event.
  *
  * @param  {InspectorPanel} inspector
  *         The instance of InspectorPanel currently loaded in the toolbox.
@@ -76,16 +77,8 @@ function openBoxModelView() {
  * @return {Promise} a promise
  */
 function waitForUpdate(inspector, waitForSelectionUpdate) {
-  return new Promise(resolve => {
-    inspector.on("boxmodel-view-updated", function onUpdate(e, reasons) {
-      // Wait for another update event if we are waiting for a selection related event.
-      if (waitForSelectionUpdate && !reasons.includes("new-selection")) {
-        return;
-      }
-
-      inspector.off("boxmodel-view-updated", onUpdate);
-      resolve();
-    });
+  return inspector.once("boxmodel-view-updated", {
+    when: (reasons) => !waitForSelectionUpdate || reasons.includes("new-selection")
   });
 }
 

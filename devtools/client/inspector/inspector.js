@@ -112,6 +112,7 @@ function Inspector(toolbox) {
   this.onNewRoot = this.onNewRoot.bind(this);
   this._onContextMenu = this._onContextMenu.bind(this);
   this.onTextBoxContextMenu = this.onTextBoxContextMenu.bind(this);
+  this._clearSearchResultsLabel = this._clearSearchResultsLabel.bind(this);
   this._updateSearchResultsLabel = this._updateSearchResultsLabel.bind(this);
   this.onNewSelection = this.onNewSelection.bind(this);
   this.onDetached = this.onDetached.bind(this);
@@ -398,7 +399,7 @@ Inspector.prototype = {
     this.searchResultsLabel = this.panelDoc.getElementById("inspector-searchlabel");
 
     this.search = new InspectorSearch(this, this.searchBox, this.searchClearButton);
-    this.search.on("search-cleared", this._updateSearchResultsLabel);
+    this.search.on("search-cleared", this._clearSearchResultsLabel);
     this.search.on("search-result", this._updateSearchResultsLabel);
 
     let shortcuts = new KeyShortcuts({
@@ -420,15 +421,18 @@ Inspector.prototype = {
     return this.search.autocompleter;
   },
 
-  _updateSearchResultsLabel: function (event, result) {
+  _clearSearchResultsLabel: function () {
+    this.searchResultsLabel.textContent = "";
+  },
+
+  _updateSearchResultsLabel: function (result) {
     let str = "";
-    if (event !== "search-cleared") {
-      if (result) {
-        str = INSPECTOR_L10N.getFormatStr(
-          "inspector.searchResultsCount2", result.resultsIndex + 1, result.resultsLength);
-      } else {
-        str = INSPECTOR_L10N.getStr("inspector.searchResultsNone");
-      }
+
+    if (result) {
+      str = INSPECTOR_L10N.getFormatStr(
+        "inspector.searchResultsCount2", result.resultsIndex + 1, result.resultsLength);
+    } else {
+      str = INSPECTOR_L10N.getStr("inspector.searchResultsNone");
     }
 
     this.searchResultsLabel.textContent = str;
@@ -551,7 +555,7 @@ Inspector.prototype = {
     Services.prefs.setIntPref("devtools.toolsidebar-height.inspector", state.height);
   },
 
-  onSidebarSelect: function (event, toolId) {
+  onSidebarSelect: function (toolId) {
     // Save the currently selected sidebar panel
     Services.prefs.setCharPref("devtools.inspector.activeSidebar", toolId);
 
@@ -847,7 +851,7 @@ Inspector.prototype = {
   /**
    * When a new node is selected.
    */
-  onNewSelection: function (event, value, reason) {
+  onNewSelection: function (value, reason) {
     if (reason === "selection-destroy") {
       return;
     }
@@ -942,7 +946,7 @@ Inspector.prototype = {
    * parent is found (may happen when deleting an iframe inside which the
    * node was selected).
    */
-  onDetached: function (event, parentNode) {
+  onDetached: function (parentNode) {
     this.breadcrumbs.cutAfter(this.breadcrumbs.indexOf(parentNode));
     this.selection.setNodeFront(parentNode ? parentNode : this._defaultNode, "detached");
   },
@@ -1491,7 +1495,7 @@ Inspector.prototype = {
    * When the pane toggle button is clicked or pressed, toggle the pane, change the button
    * state and tooltip.
    */
-  onPaneToggleButtonClicked: function (e) {
+  onPaneToggleButtonClicked: function () {
     let sidePaneContainer = this.panelDoc.querySelector(
       "#inspector-splitter-box .controlled");
     let isVisible = !this._sidebarToggle.state.collapsed;
