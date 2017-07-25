@@ -8,7 +8,7 @@
 const { Cc, Ci, Cu } = require("chrome");
 
 const Environment = require("sdk/system/environment").env;
-const EventEmitter = require("devtools/shared/event-emitter");
+const EventEmitter = require("devtools/shared/old-event-emitter");
 const Subprocess = require("sdk/system/child_process/subprocess");
 const Services = require("Services");
 

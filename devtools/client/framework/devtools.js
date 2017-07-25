@@ -23,7 +23,7 @@ loader.lazyImporter(this, "BrowserToolboxProcess", "resource://devtools/client/f
 
 const {defaultTools: DefaultTools, defaultThemes: DefaultThemes} =
   require("devtools/client/definitions");
-const EventEmitter = require("devtools/shared/event-emitter");
+const EventEmitter = require("devtools/shared/old-event-emitter");
 const {JsonView} = require("devtools/client/jsonview/main");
 const AboutDevTools = require("devtools/client/framework/about-devtools-toolbox");
 const {Task} = require("devtools/shared/task");
