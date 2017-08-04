@@ -13,7 +13,7 @@ const { ViewHelpers } = require("devtools/client/shared/widgets/view-helpers");
 const { KeyCodes } = require("devtools/client/shared/keycodes");
 
 XPCOMUtils.defineLazyModuleGetter(this, "EventEmitter",
-  "resource://devtools/shared/event-emitter.js");
+  "resource://devtools/shared/old-event-emitter.js");
 
 XPCOMUtils.defineLazyModuleGetter(this, "console",
   "resource://gre/modules/Console.jsm");

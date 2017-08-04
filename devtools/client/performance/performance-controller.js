@@ -40,7 +40,7 @@ var RecordingListItem = React.createFactory(require("devtools/client/performance
 
 var Services = require("Services");
 var promise = require("promise");
-var EventEmitter = require("devtools/shared/event-emitter");
+var EventEmitter = require("devtools/shared/old-event-emitter");
 var DevToolsUtils = require("devtools/shared/DevToolsUtils");
 var flags = require("devtools/shared/flags");
 var system = require("devtools/shared/system");

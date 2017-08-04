@@ -4,7 +4,7 @@
 
 "use strict";
 
-Components.utils.import("resource://devtools/shared/event-emitter.js");
+Components.utils.import("resource://devtools/shared/old-event-emitter.js");
 
 /* exported EXPORTED_SYMBOLS */
 
