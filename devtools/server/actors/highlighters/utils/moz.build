@@ -5,5 +5,8 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 DevToolsModules(
-    'markup.js'
+    'anonymous-content.js',
+    'hyper-script.js',
+    'markup.js',
+    'renderer.js'
 )
